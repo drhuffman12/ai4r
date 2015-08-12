@@ -52,14 +52,14 @@ module Ai4r
           net_2_2_1_no_bias.activation_nodes
       end
 
-      def test_eval
+      def test_eval_input
         #Test set 1
         net = Backpropagation.new([3, 2])
-        y = net.eval([3, 2, 3])
+        y = net.eval_input([3, 2, 3])
         assert y.length == 2
         #Test set 2
         net = Backpropagation.new([2, 4, 8, 10, 7])
-        y = net.eval([2, 3])
+        y = net.eval_input([2, 3])
         assert y.length == 7
       end
 
@@ -74,6 +74,9 @@ module Ai4r
         assert_approximate_equality_of_nested_list net.weights, x.weights
         assert_approximate_equality_of_nested_list net.last_changes, x.last_changes
         assert_approximate_equality_of_nested_list net.activation_nodes, x.activation_nodes
+        assert_approximate_equality_of_nested_list net.initial_weight_function_str, x.initial_weight_function_str
+        assert_approximate_equality_of_nested_list net.propagation_function_str, x.propagation_function_str
+        assert_approximate_equality_of_nested_list net.derivative_propagation_function_str, x.derivative_propagation_function_str
       end
 
     end

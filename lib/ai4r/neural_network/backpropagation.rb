@@ -46,12 +46,15 @@ module Ai4r
     # 
     # * :disable_bias => If true, the algorithm will not use bias nodes.
     #   False by default.
+    # * :propagation_function_str => string version of propagation_function for (un)marshalling the instance
+    # * :initial_weight_function_str => string version of initial_weight_function for (un)marshalling the instance
+    # * :derivative_propagation_function_str => string version of derivative_propagation_function for (un)marshalling the instance
     # * :initial_weight_function => f(n, i, j) must return the initial 
     #   weight for the conection between the node i in layer n, and node j in 
     #   layer n+1. By default a random number in [-1, 1) range.
     # * :propagation_function => By default: 
     #   lambda { |x| 1/(1+Math.exp(-1*(x))) }
-    # * :derivative_propagation_function => Derivative of the propagation 
+    # * :derivative_propagation_function => Derivative of the propagation
     #   function, based on propagation function output. 
     #   By default: lambda { |y| y*(1-y) }, where y=propagation_function(x)
     # * :learning_rate => By default 0.25        
@@ -70,8 +73,8 @@ module Ai4r
     #   end
     #   
     #   # Use it: Evaluate data with the trained network
-    #   net.eval([12, 48, 12, 25])  
-    #     =>  [0.86, 0.01]   
+    #   net.eval_input([12, 48, 12, 25])
+    #     =>  [0.86, 0.01]
     #     
     # More about multilayer perceptron neural networks and backpropagation:
     # 
@@ -100,7 +103,7 @@ module Ai4r
         :momentum => "By default 0.1. Set this parameter to 0 to disable "+
             "momentum."
           
-      attr_accessor :structure, :weights, :activation_nodes, :last_changes
+      attr_accessor :structure, :weights, :activation_nodes, :last_changes, :initial_weight_function_str, :propagation_function_str, :derivative_propagation_function_str
       
       # Creates a new network specifying the its architecture.
       # E.g.
@@ -116,20 +119,27 @@ module Ai4r
       #                                       # 1 output      
       def initialize(network_structure)
         @structure = network_structure
-        @initial_weight_function = lambda { |n, i, j| ((rand 2000)/1000.0) - 1}
-        @propagation_function = lambda { |x| 1/(1+Math.exp(-1*(x))) } #lambda { |x| Math.tanh(x) }
-        @derivative_propagation_function = lambda { |y| y*(1-y) } #lambda { |y| 1.0 - y**2 }
+        @initial_weight_function_str = "lambda { |n, i, j| ((rand 2000)/1000.0) - 1}"
+        @propagation_function_str = "lambda { |x| 1/(1+Math.exp(-1*(x))) }" # "lambda { |x| Math.tanh(x) }"
+        @derivative_propagation_function_str = "lambda { |y| y*(1-y) }" # "lambda { |y| 1.0 - y**2 }"
         @disable_bias = false
         @learning_rate = 0.25
         @momentum = 0.1
+        init_functions
+      end
+
+      def init_functions
+        @initial_weight_function = eval(@initial_weight_function_str)
+        @propagation_function = eval(@propagation_function_str)
+        @derivative_propagation_function = eval(@derivative_propagation_function_str)
       end
 
       # Evaluates the input.
       # E.g.
       #     net = Backpropagation.new([4, 3, 2])
-      #     net.eval([25, 32.3, 12.8, 1.5])
+      #     net.eval_input([25, 32.3, 12.8, 1.5])
       #         # =>  [0.83, 0.03]
-      def eval(input_values)
+      def eval_input(input_values)
         check_input_dimension(input_values.length)
         init_network if !@weights
         feedforward(input_values)
@@ -143,7 +153,7 @@ module Ai4r
       #         # eval gives [0.83, 0.03]
       #         # =>  0
       def eval_result(input_values)
-        result = eval(input_values)
+        result = eval_input(input_values)
         result.index(result.max)
       end
       
@@ -156,7 +166,7 @@ module Ai4r
       # This method returns the network error:
       # => 0.5 * sum( (expected_value[i] - output_value[i])**2 )
       def train(inputs, outputs)
-        eval(inputs)
+        eval_input(inputs)
         backpropagate(outputs)
         calculate_error(outputs)
       end
@@ -172,13 +182,7 @@ module Ai4r
 
       protected
 
-      # Custom serialization. It used to fail trying to serialize because
-      # it uses lambda functions internally, and they cannot be serialized.
-      # Now it does not fail, but if you customize the values of
-      # * initial_weight_function
-      # * propagation_function
-      # * derivative_propagation_function
-      # you must restore their values manually after loading the instance.
+      # Custom serialization.
       def marshal_dump
         [
           @structure,
@@ -187,21 +191,25 @@ module Ai4r
           @momentum,
           @weights,
           @last_changes,
-          @activation_nodes
+          @activation_nodes,
+          @initial_weight_function_str,
+          @propagation_function_str,
+          @derivative_propagation_function_str
         ]
       end
 
       def marshal_load(ary)
         @structure,
-           @disable_bias,
-           @learning_rate,
-           @momentum,
-           @weights,
-           @last_changes,
-           @activation_nodes = ary
-        @initial_weight_function = lambda { |n, i, j| ((rand 2000)/1000.0) - 1}
-        @propagation_function = lambda { |x| 1/(1+Math.exp(-1*(x))) } #lambda { |x| Math.tanh(x) }
-        @derivative_propagation_function = lambda { |y| y*(1-y) } #lambda { |y| 1.0 - y**2 }
+          @disable_bias,
+          @learning_rate,
+          @momentum,
+          @weights,
+          @last_changes,
+          @activation_nodes,
+          @initial_weight_function_str,
+          @propagation_function_str,
+          @derivative_propagation_function_str = ary
+        init_functions
       end
 
 

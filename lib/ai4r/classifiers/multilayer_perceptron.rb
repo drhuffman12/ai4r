@@ -89,7 +89,7 @@ module Ai4r
       #   classifier.eval(['New York',  '<30', 'F'])  # => 'Y'
       def eval(data)
         input_values = data_to_input(data)
-        output_values = @network.eval(input_values)
+        output_values = @network.eval_input(input_values)
         return @domains.last[get_max_index(output_values)]
       end
       
